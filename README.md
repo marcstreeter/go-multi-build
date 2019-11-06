@@ -1,4 +1,4 @@
-# go-multi-build
+# Guilder
 Builds multi-arch docker containers, just run 
 ```
 guilder build [name] --version 1
