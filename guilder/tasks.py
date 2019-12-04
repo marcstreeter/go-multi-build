@@ -23,14 +23,6 @@ def build(ctx, name, version='', user='marcstreeter', architectures='amd64,arm/v
     arch_names = architectures.replace(' ','').split(',')
     _separate_builds(ctx, image_base_name, *arch_names)
 
-# I may be able to do this once I have multiple machines available to me
-# def _unified_build(ctx, image_base_name, *architectures):
-#     build_command = f'docker buildx build -t {image_base_name} --platform linux/{arch} --push .'
-#     push_command = f'docker push {image_base_name}';
-#     platforms = ','.join(f'linux/{arch}' for arch in architectures)
-#     ctx.run(build_command.format(platforms=platforms))
-#     ctx.run(push_command)
-
 def _separate_builds(ctx, image_base_name, *architectures):
     build_command = 'docker build --pull --platform=linux/{architecture} -t {image_name} -f {dockerfile_name} .'
     push_command = 'docker push {image_name}'
