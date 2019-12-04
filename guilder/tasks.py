@@ -23,6 +23,7 @@ def build(ctx, name, version='', user='marcstreeter', architectures='amd64,arm/v
     arch_names = architectures.replace(' ','').split(',')
     _separate_builds(ctx, image_base_name, *arch_names)
 
+
 def _separate_builds(ctx, image_base_name, *architectures):
     build_command = 'docker build --pull --platform=linux/{architecture} -t {image_name} -f {dockerfile_name} .'
     push_command = 'docker push {image_name}'
@@ -43,7 +44,7 @@ def _separate_builds(ctx, image_base_name, *architectures):
             architecture=architecture,
             image_name=image_name,
             dockerfile_name=dockerfile_name)
-        print(f'Building Image: {rendered_build_command}')
+        print(f'💥Building Image: {rendered_build_command}')
         ctx.run(rendered_build_command)
         platforms.append({
             'architecture': architecture,
@@ -56,16 +57,16 @@ def _separate_builds(ctx, image_base_name, *architectures):
     for platform in platforms:
         image_name = platform['image_name']
         rendered_push_command = push_command.format(image_name=image_name)
-        print(f'\t\t\tPushing image: {rendered_push_command}')
+        print(f'\t\t\t💥Pushing image: {rendered_push_command}')
         ctx.run(rendered_push_command)
 
     image_names = ' '.join(platform['image_name'] for platform in platforms)
     manifest_create_cmd = f'docker manifest create {image_base_name} {image_names} --amend'
-    print(f'Building manifest: {manifest_create_cmd}')
+    print(f'💥Building manifest: {manifest_create_cmd}')
     ctx.run(manifest_create_cmd)
     manifest_inspect_cmd = f'docker manifest inspect {image_base_name}'
-    print(f'Inspecting manifest: {manifest_inspect_cmd}')
+    print(f'💥Inspecting manifest: {manifest_inspect_cmd}')
     ctx.run(manifest_inspect_cmd)
     manifest_push_cmd = f'docker manifest push {image_base_name}'
-    print(f'Pushing manifest: {manifest_push_cmd}')
+    print(f'💥Pushing manifest: {manifest_push_cmd}')
     ctx.run(manifest_push_cmd)
