@@ -1,32 +1,72 @@
+from pathlib import Path
 from invoke import task
+
+ARCH_DUMB_MAP = {
+    'arm/v7': 'arm',
+    'arm64/v8': 'arm64',
+    'amd64': 'amd64',
+}
 
 @task(
     default=True,
     help={
         'name': 'Name of image',
         'version': 'Version of image',
-        'user': 'Docker user account namespace'
+        'user': 'Docker user account namespace',
+        'architectures': 'Architecture(s) for which the image will be built'
     }
 )
-def build(ctx, name, version=None, user='marcstreeter'):
+def build(ctx, name, version='', user='marcstreeter', architectures='amd64,arm/v7,arm64/v8'):
     # constants
     image_version = f'v{version}' if version else 'latest'
-    image_name = f'{user}/{name}:{image_version}'
-    amd_name = f'{image_name}-amd'
-    arm_name = f'{image_name}-arm'
+    image_base_name = f'{user}/{name}:{image_version}'
+    arch_names = architectures.replace(' ','').split(',')
+    _separate_builds(ctx, image_base_name, *arch_names)
 
-    # commands
-    build_command = 'docker build --pull -t {image_name}  -f Dockerfile.{arch} .'
+
+def _separate_builds(ctx, image_base_name, *architectures):
+    build_command = 'docker build --pull --platform=linux/{architecture} -t {image_name} -f {dockerfile_name} .'
     push_command = 'docker push {image_name}'
+    platforms = []
 
-    for arch_name, arch in ((amd_name, 'amd'), (arm_name, 'arm')):
-        print(f'Building Image for {arch}: {arch_name}')
-        ctx.run(build_command.format(image_name=arch_name, arch=arch))
-        print(f'Pushing Image for {arch}: {arch_name}')
-        ctx.run(push_command.format(image_name=arch_name))
+    print('Building images...')
 
-    print('Building manifest...')
-    ctx.run(f'docker manifest create {image_name} {amd_name} {arm_name}')
-    ctx.run(f'docker manifest annotate {image_name} {arm_name} --os linux --arch arm')
-    ctx.run(f'docker manifest push {image_name}')
+    for architecture in architectures:
+        arch_suffix = ARCH_DUMB_MAP[architecture]
+        dockerfile_name = f'Dockerfile.{arch_suffix}'
+        image_name = f'{image_base_name}-{arch_suffix}'
+
+        if not Path.exists(Path.cwd() / dockerfile_name):
+            print(f"Dockerfile, '{dockerfile_name}', not found. Skipping")
+            continue
+
+        rendered_build_command = build_command.format(
+            architecture=architecture,
+            image_name=image_name,
+            dockerfile_name=dockerfile_name)
+        print(f'Building Image: {rendered_build_command}')
+        ctx.run(rendered_build_command)
+        platforms.append({
+            'architecture': architecture,
+            'operating_system': 'linux',
+            'image_name': image_name,
+        })
     
+    print('Pushing images...')
+
+    for platform in platforms:
+        image_name = platform['image_name']
+        rendered_push_command = push_command.format(image_name=image_name)
+        print(f'\t\t\tPushing image: {rendered_push_command}')
+        ctx.run(rendered_push_command)
+
+    image_names = ' '.join(platform['image_name'] for platform in platforms)
+    manifest_create_cmd = f'docker manifest create {image_base_name} {image_names} --amend'
+    print(f'Building manifest: {manifest_create_cmd}')
+    ctx.run(manifest_create_cmd)
+    manifest_inspect_cmd = f'docker manifest inspect {image_base_name}'
+    print(f'Inspecting manifest: {manifest_inspect_cmd}')
+    ctx.run(manifest_inspect_cmd)
+    manifest_push_cmd = f'docker manifest push {image_base_name}'
+    print(f'Pushing manifest: {manifest_push_cmd}')
+    ctx.run(manifest_push_cmd)
