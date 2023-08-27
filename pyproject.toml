@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "guilder"
+version = "0.1.0"
+description = "builds multi-arch versions of docker image"
+authors = ["Marc Streeter <mstreeter@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+invoke = "^1.7.1"
+
+[tool.poetry.scripts]
+guilder = "guilder.main:program.run"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
